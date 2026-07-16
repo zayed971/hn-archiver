@@ -45,14 +45,25 @@ def scrape():
 
     # Check which IDs we already have
     existing = set()
+    total_rows = 0
     try:
         with open(CSV_PATH, newline="", encoding="utf-8") as f:
             for row in csv.DictReader(f):
+                total_rows += 1
                 hid = (row.get("hn_id") or "").strip()
                 if hid:
                     existing.add(hid)
     except FileNotFoundError:
         pass
+
+    # Defensive: this should never happen (existing already blocks re-adding a
+    # seen hn_id), but if the archive was ever touched by another process/script
+    # version, surface it loudly instead of silently accumulating more dupes.
+    if total_rows != len(existing):
+        print(
+            f"WARNING: hn_archive.csv has {total_rows - len(existing)} duplicate hn_id rows. "
+            "Dedupe before trusting counts from this file."
+        )
 
     # Fetch each story, append new ones
     new_count = 0
